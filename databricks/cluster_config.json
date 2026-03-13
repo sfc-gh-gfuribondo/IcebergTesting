@@ -1,0 +1,22 @@
+{
+  "cluster_id": "0311-020831-5iv29gab",
+  "cluster_name": "Snowflake-IRC-Iceberg",
+  "spark_version": "14.3.x-scala2.12",
+  "node_type_id": "Standard_DS3_v2",
+  "num_workers": 1,
+  "autotermination_minutes": 30,
+  "spark_conf": {
+    "spark.sql.catalog.snowflake_irc": "org.apache.iceberg.spark.SparkCatalog",
+    "spark.sql.catalog.snowflake_irc.type": "rest",
+    "spark.sql.catalog.snowflake_irc.uri": "https://sfsenorthamerica-demo_gfuribondo2.snowflakecomputing.com/polaris/api/catalog",
+    "spark.sql.catalog.snowflake_irc.warehouse": "ICEBERG_TESTING",
+    "spark.sql.catalog.snowflake_irc.scope": "session:role:ACCOUNTADMIN",
+    "spark.hadoop.fs.azure.account.key.gfstorageaccountwest2.blob.core.windows.net": "{{secrets/snowflake-irc/azure-storage-key}}",
+    "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+    "spark.jars.packages": "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.4.0"
+  },
+  "custom_tags": {
+    "project": "iceberg-poc",
+    "purpose": "snowflake-interop"
+  }
+}
