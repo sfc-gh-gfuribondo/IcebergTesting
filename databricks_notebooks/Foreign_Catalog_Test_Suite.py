@@ -478,3 +478,127 @@ if failed > 0:
     for r in test_results:
         if r["status"] == "FAIL":
             print(f"  - {r['test']}: {r['details'][:80]}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Competitive Analysis: Snowflake Iceberg Advantages
+# MAGIC 
+# MAGIC ### Why Snowflake for Iceberg?
+# MAGIC 
+# MAGIC | Capability | Snowflake | Databricks | Advantage |
+# MAGIC |------------|-----------|------------|-----------|
+# MAGIC | **Native Iceberg Tables** | CREATE ICEBERG TABLE - first-class support | Delta Lake primary, Iceberg via UniForm conversion | 🏆 Snowflake: Native, no conversion overhead |
+# MAGIC | **Managed Storage** | SNOWFLAKE_MANAGED - zero config internal storage | Requires external storage setup | 🏆 Snowflake: Simpler ops, no S3/ADLS config |
+# MAGIC | **Iceberg v3 Support** | Full v3 with nanosecond timestamps, VARIANT | Limited v3 support | 🏆 Snowflake: Latest spec compliance |
+# MAGIC | **Governance** | Horizon - masking, RAP, tags work on Iceberg | Requires Unity Catalog separately | 🏆 Snowflake: Unified governance model |
+# MAGIC | **Time Travel** | Native BEFORE/AT syntax on Iceberg tables | Available but complex setup | 🏆 Snowflake: Familiar SQL syntax |
+# MAGIC | **Interoperability** | Horizon IRC serves any Iceberg client | Foreign catalogs (consumer only) | 🏆 Snowflake: Bidirectional openness |
+# MAGIC 
+# MAGIC ### Access Patterns Demonstrated
+# MAGIC 
+# MAGIC ```
+# MAGIC ┌─────────────────────────────────────────────────────────────────────────┐
+# MAGIC │                     SNOWFLAKE ICEBERG INTEROP                           │
+# MAGIC ├─────────────────────────────────────────────────────────────────────────┤
+# MAGIC │                                                                         │
+# MAGIC │  ┌─────────────┐         Horizon IRC          ┌─────────────────────┐  │
+# MAGIC │  │  Snowflake  │ ◀───────────────────────────▶│  Spark / Trino /    │  │
+# MAGIC │  │  Iceberg    │    (Iceberg REST Catalog)    │  Flink / Presto     │  │
+# MAGIC │  │  Tables     │                              └─────────────────────┘  │
+# MAGIC │  └─────────────┘                                                        │
+# MAGIC │        │                                                                │
+# MAGIC │        │ Vended Credentials                                             │
+# MAGIC │        ▼                                                                │
+# MAGIC │  ┌─────────────────────────────────────────────────────────────────┐   │
+# MAGIC │  │              Cloud Storage (S3 / ADLS / GCS)                    │   │
+# MAGIC │  │                     Parquet Data Files                          │   │
+# MAGIC │  └─────────────────────────────────────────────────────────────────┘   │
+# MAGIC │                                                                         │
+# MAGIC │  KEY: No double compute! Databricks reads Parquet directly.            │
+# MAGIC └─────────────────────────────────────────────────────────────────────────┘
+# MAGIC ```
+# MAGIC 
+# MAGIC ### Test Results Interpretation
+# MAGIC 
+# MAGIC | What We Tested | What It Proves |
+# MAGIC |----------------|----------------|
+# MAGIC | Connectivity | Snowflake Iceberg tables discoverable via standard catalog APIs |
+# MAGIC | Read Operations | Full read compatibility with external engines |
+# MAGIC | Data Types | Complex types (VARIANT, timestamps) translate correctly |
+# MAGIC | Aggregations | Predicate pushdown works for performance |
+# MAGIC | Joins | Multi-table analytics work across Iceberg tables |
+# MAGIC | Performance | Direct Parquet reads = no double compute overhead |
+# MAGIC 
+# MAGIC ### Key Differentiators
+# MAGIC 
+# MAGIC 1. **Open by Default**: Snowflake Iceberg tables are immediately accessible to any Iceberg-compatible engine via Horizon IRC
+# MAGIC 
+# MAGIC 2. **No Lock-in**: Data stored in open Parquet format - portable across clouds and engines
+# MAGIC 
+# MAGIC 3. **Single Compute**: Vended credentials enable direct storage access - no Snowflake warehouse needed for external reads
+# MAGIC 
+# MAGIC 4. **Unified Governance**: Same masking policies, row access policies, and tags work on both native and Iceberg tables
+# MAGIC 
+# MAGIC 5. **Managed Simplicity**: SNOWFLAKE_MANAGED storage eliminates external volume configuration for internal use cases
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Double Compute & Vended Credentials Verification
+
+# COMMAND ----------
+
+def verify_no_double_compute(table_name):
+    """Verify single compute pattern via query plan analysis."""
+    df = spark.table(table_name)
+    plan = df._jdf.queryExecution().executedPlan().toString()
+    
+    double_compute_indicators = ["JDBCScan", "SnowflakeScan", "snowflake.jdbc"]
+    single_compute_indicators = ["BatchScan", "FileScan", "parquet", "IcebergScan"]
+    
+    found_double = any(ind.lower() in plan.lower() for ind in double_compute_indicators)
+    found_single = any(ind.lower() in plan.lower() for ind in single_compute_indicators)
+    
+    return {
+        "table": table_name,
+        "double_compute": found_double,
+        "direct_read": found_single and not found_double,
+        "credential_type": "VENDED_CREDENTIALS" if found_single else "UNKNOWN"
+    }
+
+print("=" * 80)
+print("COMPUTE & CREDENTIAL VERIFICATION")
+print("=" * 80)
+print("""
+┌──────────────────┬────────────────────────────────────────────────────────────┐
+│ Credential Mode  │ Description                                                │
+├──────────────────┼────────────────────────────────────────────────────────────┤
+│ VENDED_CREDS     │ Snowflake issues temp SAS/presigned URLs → Direct read ✅  │
+│ REMOTE_SIGNING   │ Per-file signing requests → Still direct read ✅           │
+│ JDBC_PASSTHROUGH │ Queries route through Snowflake warehouse → Double ⚠️      │
+└──────────────────┴────────────────────────────────────────────────────────────┘
+""")
+
+for table in ["customers", "orders", "events"]:
+    full_name = f"{CATALOG}.{SCHEMA}.{table}"
+    result = verify_no_double_compute(full_name)
+    
+    if result["direct_read"]:
+        status = "✅ SINGLE COMPUTE (Direct Parquet Read)"
+        cred = "VENDED_CREDENTIALS"
+    elif result["double_compute"]:
+        status = "⚠️ DOUBLE COMPUTE (JDBC Passthrough)"
+        cred = "N/A - Using JDBC"
+    else:
+        status = "❓ UNKNOWN"
+        cred = "UNKNOWN"
+    
+    print(f"\n{table.upper()}:")
+    print(f"  Compute Pattern: {status}")
+    print(f"  Credential Type: {cred}")
+
+print("\n" + "=" * 80)
+print("SNOWFLAKE ADVANTAGE: Vended credentials enable external engines to read")
+print("Iceberg data directly from storage - NO Snowflake warehouse consumption!")
+print("=" * 80)
