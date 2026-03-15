@@ -227,7 +227,112 @@ print("\n" + "=" * 80)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 9e. Snowflake Query History Check (Run in Snowflake)
+# MAGIC ### 9e. Vended Credentials Detection
+# MAGIC 
+# MAGIC **Vended credentials** are temporary, scoped credentials (SAS tokens for Azure, presigned URLs for S3)
+# MAGIC that Snowflake's Iceberg REST Catalog provides to allow direct storage access without configuring
+# MAGIC storage credentials in Databricks.
+# MAGIC 
+# MAGIC | Credential Type | How It Works | Double Compute? |
+# MAGIC |-----------------|--------------|-----------------|
+# MAGIC | **Vended Credentials** | Snowflake issues temp SAS/presigned URLs; Databricks reads storage directly | ❌ No |
+# MAGIC | **Remote Signing** | Databricks sends file paths to Snowflake to sign; still reads storage directly | ❌ No |
+# MAGIC | **JDBC Passthrough** | Databricks sends SQL to Snowflake; Snowflake executes and returns results | ✅ Yes |
+
+# COMMAND ----------
+
+def check_credential_type(table_name):
+    """
+    Determine credential access pattern from Spark configs and table properties.
+    """
+    result = {
+        "table": table_name,
+        "credential_type": "UNKNOWN",
+        "vended_credentials": None,
+        "evidence": []
+    }
+    
+    try:
+        catalog_impl = spark.conf.get("spark.sql.catalog.snowflake_iceberg", "not set")
+        result["evidence"].append(f"Catalog impl: {catalog_impl}")
+        
+        if "rest" in catalog_impl.lower() or "iceberg" in catalog_impl.lower():
+            result["credential_type"] = "VENDED_CREDENTIALS (Iceberg REST Catalog)"
+            result["vended_credentials"] = True
+            result["evidence"].append("REST catalog detected - uses vended credentials by default")
+    except Exception as e:
+        result["evidence"].append(f"Config check error: {str(e)[:50]}")
+    
+    try:
+        df = spark.sql(f"DESCRIBE EXTENDED {table_name}")
+        rows = df.collect()
+        for row in rows:
+            col_name = str(row[0]).lower() if row[0] else ""
+            col_value = str(row[1]) if row[1] else ""
+            
+            if "provider" in col_name and "iceberg" in col_value.lower():
+                result["evidence"].append(f"Provider: {col_value} (Iceberg = vended creds)")
+                result["vended_credentials"] = True
+            if "location" in col_name and ("azure" in col_value.lower() or "s3" in col_value.lower() or "gs" in col_value.lower()):
+                result["evidence"].append(f"Storage location: {col_value[:80]}...")
+                result["vended_credentials"] = True
+    except Exception as e:
+        result["evidence"].append(f"Table describe error: {str(e)[:50]}")
+    
+    try:
+        props_df = spark.sql(f"SHOW TBLPROPERTIES {table_name}")
+        props = {row[0]: row[1] for row in props_df.collect()}
+        
+        if "credential_vending" in str(props).lower():
+            result["evidence"].append("credential_vending property found")
+            result["vended_credentials"] = True
+        if "metadata_location" in props:
+            result["evidence"].append(f"metadata_location: {props['metadata_location'][:60]}...")
+    except Exception as e:
+        result["evidence"].append(f"Properties check error: {str(e)[:50]}")
+    
+    if result["vended_credentials"]:
+        result["credential_type"] = "VENDED_CREDENTIALS"
+    
+    return result
+
+print("=" * 80)
+print("VENDED CREDENTIALS VERIFICATION")
+print("=" * 80)
+print("""
+Access Delegation Modes:
+  • VENDED_CREDENTIALS: Snowflake provides temp SAS/presigned URLs to Databricks
+                        Databricks reads Parquet files directly from storage
+                        ✅ Single compute (Databricks only)
+                        
+  • REMOTE_SIGNING:     Databricks requests signed URLs per file from Snowflake
+                        Still reads storage directly, more API calls
+                        ✅ Single compute (Databricks only)
+                        
+  • JDBC/Connector:     Queries route through Snowflake warehouse
+                        ⚠️ Double compute (both engines)
+""")
+print("=" * 80)
+
+for table in ["customers", "orders", "events"]:
+    full_name = f"snowflake_iceberg.external_iceberg.{table}"
+    try:
+        cred_result = check_credential_type(full_name)
+        status = "✅ VENDED" if cred_result["vended_credentials"] else "❓ UNKNOWN"
+        print(f"\n{table.upper()}:")
+        print(f"  Credential Type: {cred_result['credential_type']}")
+        print(f"  Status: {status}")
+        for ev in cred_result["evidence"][:3]:
+            print(f"    - {ev}")
+    except Exception as e:
+        print(f"\n{table.upper()}: ❌ ERROR - {str(e)[:60]}")
+
+print("\n" + "=" * 80)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 9f. Snowflake Query History Check (Run in Snowflake)
 # MAGIC 
 # MAGIC To fully verify no Snowflake compute is used, run this query in Snowflake 
 # MAGIC **before and after** executing Databricks queries:
@@ -277,14 +382,38 @@ print("=" * 60)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Summary: Double Compute Analysis
+# MAGIC ## Summary: Double Compute & Credential Analysis
 # MAGIC 
 # MAGIC | Method | What It Shows | Expected for Iceberg REST |
 # MAGIC |--------|---------------|---------------------------|
 # MAGIC | Physical Plan | `BatchScan`/`FileScan parquet` = direct read | ✅ No JDBC/Snowflake scan |
 # MAGIC | DESCRIBE EXTENDED | Provider = `iceberg` | ✅ Iceberg format |
 # MAGIC | TBLPROPERTIES | Metadata location in cloud storage | ✅ Points to Parquet files |
+# MAGIC | Credential Type | VENDED_CREDENTIALS or REMOTE_SIGNING | ✅ Temp creds for storage access |
 # MAGIC | Snowflake Query History | No SELECT queries during test | ✅ No warehouse usage |
 # MAGIC 
-# MAGIC **Conclusion:** If all checks pass, Databricks is reading Iceberg files directly 
-# MAGIC from cloud storage with vended credentials - **single compute only**.
+# MAGIC ### Credential Flow Summary
+# MAGIC 
+# MAGIC ```
+# MAGIC ┌─────────────┐     1. loadTable()      ┌─────────────────────┐
+# MAGIC │  Databricks │ ───────────────────────▶│ Snowflake IRC       │
+# MAGIC │  Spark      │                         │ (REST Catalog API)  │
+# MAGIC └─────────────┘                         └─────────────────────┘
+# MAGIC       │                                          │
+# MAGIC       │                              2. Return metadata +
+# MAGIC       │                                 vended credentials
+# MAGIC       │                                 (temp SAS token)
+# MAGIC       │◀─────────────────────────────────────────┘
+# MAGIC       │
+# MAGIC       │  3. Read Parquet files directly
+# MAGIC       │     using vended credentials
+# MAGIC       ▼
+# MAGIC ┌─────────────────────┐
+# MAGIC │   Cloud Storage     │
+# MAGIC │ (Azure Blob / S3)   │
+# MAGIC │   Parquet files     │
+# MAGIC └─────────────────────┘
+# MAGIC ```
+# MAGIC 
+# MAGIC **Key Point:** With vended credentials, Snowflake warehouse is NOT used for query execution.
+# MAGIC Only the Iceberg REST Catalog API is called for metadata and credential vending.
