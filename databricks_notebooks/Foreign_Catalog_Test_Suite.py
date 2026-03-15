@@ -551,8 +551,16 @@ if failed > 0:
 
 def verify_no_double_compute(table_name):
     """Verify single compute pattern via query plan analysis."""
+    import io
+    import sys
+    
     df = spark.table(table_name)
-    plan = df._jdf.queryExecution().executedPlan().toString()
+    
+    old_stdout = sys.stdout
+    sys.stdout = buffer = io.StringIO()
+    df.explain(mode="extended")
+    plan = buffer.getvalue()
+    sys.stdout = old_stdout
     
     double_compute_indicators = ["JDBCScan", "SnowflakeScan", "snowflake.jdbc"]
     single_compute_indicators = ["BatchScan", "FileScan", "parquet", "IcebergScan"]
@@ -564,7 +572,8 @@ def verify_no_double_compute(table_name):
         "table": table_name,
         "double_compute": found_double,
         "direct_read": found_single and not found_double,
-        "credential_type": "VENDED_CREDENTIALS" if found_single else "UNKNOWN"
+        "credential_type": "VENDED_CREDENTIALS" if found_single else "UNKNOWN",
+        "plan_snippet": plan[:300] if plan else "No plan available"
     }
 
 print("=" * 80)

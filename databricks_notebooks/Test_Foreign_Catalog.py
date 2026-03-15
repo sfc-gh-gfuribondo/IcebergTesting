@@ -162,6 +162,8 @@ df_customers.explain(mode="extended")
 # COMMAND ----------
 
 import re
+import io
+import sys
 
 def check_double_compute(table_name):
     """
@@ -171,7 +173,12 @@ def check_double_compute(table_name):
         dict with 'uses_double_compute' (bool), 'compute_type' (str), 'evidence' (str)
     """
     df = spark.table(table_name)
-    plan = df._jdf.queryExecution().executedPlan().toString()
+    
+    old_stdout = sys.stdout
+    sys.stdout = buffer = io.StringIO()
+    df.explain(mode="extended")
+    plan = buffer.getvalue()
+    sys.stdout = old_stdout
     
     double_compute_indicators = [
         "JDBCScan", "SnowflakeScan", "SnowflakeRelation", 
@@ -202,7 +209,7 @@ def check_double_compute(table_name):
         "uses_double_compute": uses_double_compute,
         "compute_type": compute_type,
         "evidence": evidence,
-        "plan_snippet": plan[:500]
+        "plan_snippet": plan[:500] if plan else "No plan available"
     }
 
 tables_to_check = ["customers", "orders", "events"]
