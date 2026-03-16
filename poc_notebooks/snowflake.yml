@@ -5,107 +5,108 @@ entities:
     type: notebook
     identifier:
       name: NB_00_SETUP_ENVIRONMENT
+      schema: NOTEBOOKS
+      database: ICEBERG_POC
+    notebook_file: 00_Setup_Environment.ipynb
     artifacts:
       - 00_Setup_Environment.ipynb
-    handler: 00_Setup_Environment.ipynb
-    stage: ICEBERG_POC.NOTEBOOKS.POC_NOTEBOOKS_STAGE
     query_warehouse: COMPUTE_WH
-    main_file: 00_Setup_Environment.ipynb
-    runtime_name: SYSTEM$BASIC_RUNTIME_2024_09
-    from_cell_name: cell-1
 
   nb_01_basics:
     type: notebook
     identifier:
       name: NB_01_ICEBERG_V3_BASICS
+      schema: NOTEBOOKS
+      database: ICEBERG_POC
+    notebook_file: 01_Iceberg_V3_Basics.ipynb
     artifacts:
       - 01_Iceberg_V3_Basics.ipynb
-    handler: 01_Iceberg_V3_Basics.ipynb
-    stage: ICEBERG_POC.NOTEBOOKS.POC_NOTEBOOKS_STAGE
     query_warehouse: COMPUTE_WH
-    main_file: 01_Iceberg_V3_Basics.ipynb
-    runtime_name: SYSTEM$BASIC_RUNTIME_2024_09
 
   nb_02_performance:
     type: notebook
     identifier:
       name: NB_02_PERFORMANCE_BENCHMARKS
+      schema: NOTEBOOKS
+      database: ICEBERG_POC
+    notebook_file: 02_Performance_Benchmarks.ipynb
     artifacts:
       - 02_Performance_Benchmarks.ipynb
-    handler: 02_Performance_Benchmarks.ipynb
-    stage: ICEBERG_POC.NOTEBOOKS.POC_NOTEBOOKS_STAGE
     query_warehouse: COMPUTE_WH
-    main_file: 02_Performance_Benchmarks.ipynb
-    runtime_name: SYSTEM$BASIC_RUNTIME_2024_09
 
   nb_03_dml:
     type: notebook
     identifier:
       name: NB_03_DML_OPERATIONS
+      schema: NOTEBOOKS
+      database: ICEBERG_POC
+    notebook_file: 03_DML_Operations.ipynb
     artifacts:
       - 03_DML_Operations.ipynb
-    handler: 03_DML_Operations.ipynb
-    stage: ICEBERG_POC.NOTEBOOKS.POC_NOTEBOOKS_STAGE
     query_warehouse: COMPUTE_WH
-    main_file: 03_DML_Operations.ipynb
-    runtime_name: SYSTEM$BASIC_RUNTIME_2024_09
 
   nb_04_streams:
     type: notebook
     identifier:
       name: NB_04_STREAMS_TASKS_DT
+      schema: NOTEBOOKS
+      database: ICEBERG_POC
+    notebook_file: 04_Streams_Tasks_DynamicTables.ipynb
     artifacts:
       - 04_Streams_Tasks_DynamicTables.ipynb
-    handler: 04_Streams_Tasks_DynamicTables.ipynb
-    stage: ICEBERG_POC.NOTEBOOKS.POC_NOTEBOOKS_STAGE
     query_warehouse: COMPUTE_WH
-    main_file: 04_Streams_Tasks_DynamicTables.ipynb
-    runtime_name: SYSTEM$BASIC_RUNTIME_2024_09
 
   nb_05_governance:
     type: notebook
     identifier:
       name: NB_05_GOVERNANCE_SECURITY
+      schema: NOTEBOOKS
+      database: ICEBERG_POC
+    notebook_file: 05_Governance_Security.ipynb
     artifacts:
       - 05_Governance_Security.ipynb
-    handler: 05_Governance_Security.ipynb
-    stage: ICEBERG_POC.NOTEBOOKS.POC_NOTEBOOKS_STAGE
     query_warehouse: COMPUTE_WH
-    main_file: 05_Governance_Security.ipynb
-    runtime_name: SYSTEM$BASIC_RUNTIME_2024_09
 
   nb_06_hadr:
     type: notebook
     identifier:
       name: NB_06_HA_DR_REPLICATION
+      schema: NOTEBOOKS
+      database: ICEBERG_POC
+    notebook_file: 06_HA_DR_Replication.ipynb
     artifacts:
       - 06_HA_DR_Replication.ipynb
-    handler: 06_HA_DR_Replication.ipynb
-    stage: ICEBERG_POC.NOTEBOOKS.POC_NOTEBOOKS_STAGE
     query_warehouse: COMPUTE_WH
-    main_file: 06_HA_DR_Replication.ipynb
-    runtime_name: SYSTEM$BASIC_RUNTIME_2024_09
 
   nb_07_concurrency:
     type: notebook
     identifier:
       name: NB_07_CONCURRENCY_STRESS
+      schema: NOTEBOOKS
+      database: ICEBERG_POC
+    notebook_file: 07_Concurrency_Stress.ipynb
     artifacts:
       - 07_Concurrency_Stress.ipynb
-    handler: 07_Concurrency_Stress.ipynb
-    stage: ICEBERG_POC.NOTEBOOKS.POC_NOTEBOOKS_STAGE
     query_warehouse: COMPUTE_WH
-    main_file: 07_Concurrency_Stress.ipynb
-    runtime_name: SYSTEM$BASIC_RUNTIME_2024_09
 
   nb_08_interop:
     type: notebook
     identifier:
       name: NB_08_DATABRICKS_INTEROP
+      schema: NOTEBOOKS
+      database: ICEBERG_POC
+    notebook_file: 08_Databricks_IRC_Interop.ipynb
     artifacts:
       - 08_Databricks_IRC_Interop.ipynb
-    handler: 08_Databricks_IRC_Interop.ipynb
-    stage: ICEBERG_POC.NOTEBOOKS.POC_NOTEBOOKS_STAGE
     query_warehouse: COMPUTE_WH
-    main_file: 08_Databricks_IRC_Interop.ipynb
-    runtime_name: SYSTEM$BASIC_RUNTIME_2024_09
+
+  nb_09_summary:
+    type: notebook
+    identifier:
+      name: NB_09_POC_RESULTS_SUMMARY
+      schema: NOTEBOOKS
+      database: ICEBERG_POC
+    notebook_file: 09_POC_Results_Summary.ipynb
+    artifacts:
+      - 09_POC_Results_Summary.ipynb
+    query_warehouse: COMPUTE_WH
