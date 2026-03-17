@@ -8,6 +8,15 @@
 # MAGIC **Snowflake Database:** `ICEBERG_POC`  
 # MAGIC **Schema:** `EXTERNAL_ICEBERG`
 # MAGIC 
+# MAGIC ## Healthcare Domain Tables
+# MAGIC | Table | Description | Expected Rows |
+# MAGIC |-------|-------------|---------------|
+# MAGIC | patients | Patient demographics | 100,000 |
+# MAGIC | encounters | Clinical encounters | 1,000,000 |
+# MAGIC | claims | Insurance claims | 500,000 |
+# MAGIC | medications | Medication records | 300,000 |
+# MAGIC | providers | Healthcare providers | 1,000 |
+# MAGIC 
 # MAGIC ## Test Categories
 # MAGIC 1. Connectivity & Discovery
 # MAGIC 2. Basic Read Operations
@@ -48,11 +57,11 @@ CATALOG = "snowflake_iceberg"
 SCHEMA = "external_iceberg"
 
 EXPECTED_COUNTS = {
-    "customers": 99998,
-    "events": 1000000,
-    "orders": 500000,
-    "products": 10000,
-    "transactions": 1000000
+    "patients": 100000,
+    "encounters": 1000000,
+    "claims": 500000,
+    "medications": 300000,
+    "providers": 1000
 }
 
 test_results = []
@@ -142,41 +151,41 @@ run_test("List Tables", test_list_tables, "Connectivity", "DBX", "IRC")
 
 # COMMAND ----------
 
-def test_read_customers():
-    df = spark.table(f"{CATALOG}.{SCHEMA}.customers")
+def test_read_patients():
+    df = spark.table(f"{CATALOG}.{SCHEMA}.patients")
     count = df.count()
-    assert count == EXPECTED_COUNTS["customers"], f"Expected {EXPECTED_COUNTS['customers']}, got {count}"
+    assert count == EXPECTED_COUNTS["patients"], f"Expected {EXPECTED_COUNTS['patients']}, got {count}"
     return f"{count:,} rows"
 
-def test_read_events():
-    df = spark.table(f"{CATALOG}.{SCHEMA}.events")
+def test_read_encounters():
+    df = spark.table(f"{CATALOG}.{SCHEMA}.encounters")
     count = df.count()
-    assert count == EXPECTED_COUNTS["events"], f"Expected {EXPECTED_COUNTS['events']}, got {count}"
+    assert count == EXPECTED_COUNTS["encounters"], f"Expected {EXPECTED_COUNTS['encounters']}, got {count}"
     return f"{count:,} rows"
 
-def test_read_orders():
-    df = spark.table(f"{CATALOG}.{SCHEMA}.orders")
+def test_read_claims():
+    df = spark.table(f"{CATALOG}.{SCHEMA}.claims")
     count = df.count()
-    assert count == EXPECTED_COUNTS["orders"], f"Expected {EXPECTED_COUNTS['orders']}, got {count}"
+    assert count == EXPECTED_COUNTS["claims"], f"Expected {EXPECTED_COUNTS['claims']}, got {count}"
     return f"{count:,} rows"
 
-def test_read_products():
-    df = spark.table(f"{CATALOG}.{SCHEMA}.products")
+def test_read_medications():
+    df = spark.table(f"{CATALOG}.{SCHEMA}.medications")
     count = df.count()
-    assert count == EXPECTED_COUNTS["products"], f"Expected {EXPECTED_COUNTS['products']}, got {count}"
+    assert count == EXPECTED_COUNTS["medications"], f"Expected {EXPECTED_COUNTS['medications']}, got {count}"
     return f"{count:,} rows"
 
-def test_read_transactions():
-    df = spark.table(f"{CATALOG}.{SCHEMA}.transactions")
+def test_read_providers():
+    df = spark.table(f"{CATALOG}.{SCHEMA}.providers")
     count = df.count()
-    assert count == EXPECTED_COUNTS["transactions"], f"Expected {EXPECTED_COUNTS['transactions']}, got {count}"
+    assert count == EXPECTED_COUNTS["providers"], f"Expected {EXPECTED_COUNTS['providers']}, got {count}"
     return f"{count:,} rows"
 
-run_test("Read CUSTOMERS", test_read_customers, "Read Operations", "DBX", "IRC+VENDED+STORAGE")
-run_test("Read EVENTS", test_read_events, "Read Operations", "DBX", "IRC+VENDED+STORAGE")
-run_test("Read ORDERS", test_read_orders, "Read Operations", "DBX", "IRC+VENDED+STORAGE")
-run_test("Read PRODUCTS", test_read_products, "Read Operations", "DBX", "IRC+VENDED+STORAGE")
-run_test("Read TRANSACTIONS", test_read_transactions, "Read Operations", "DBX", "IRC+VENDED+STORAGE")
+run_test("Read PATIENTS", test_read_patients, "Read Operations", "DBX", "IRC+VENDED+STORAGE")
+run_test("Read ENCOUNTERS", test_read_encounters, "Read Operations", "DBX", "IRC+VENDED+STORAGE")
+run_test("Read CLAIMS", test_read_claims, "Read Operations", "DBX", "IRC+VENDED+STORAGE")
+run_test("Read MEDICATIONS", test_read_medications, "Read Operations", "DBX", "IRC+VENDED+STORAGE")
+run_test("Read PROVIDERS", test_read_providers, "Read Operations", "DBX", "IRC+VENDED+STORAGE")
 
 # COMMAND ----------
 
@@ -193,34 +202,34 @@ run_test("Read TRANSACTIONS", test_read_transactions, "Read Operations", "DBX", 
 # COMMAND ----------
 
 def test_numeric_types():
-    df = spark.table(f"{CATALOG}.{SCHEMA}.customers")
-    row = df.select("customer_id", "lifetime_value").first()
-    assert row.customer_id is not None
-    assert isinstance(row.lifetime_value, (int, float, type(None)))
-    return f"customer_id={row.customer_id}, lifetime_value={row.lifetime_value}"
+    df = spark.table(f"{CATALOG}.{SCHEMA}.patients")
+    row = df.select("patient_id", "age").first()
+    assert row.patient_id is not None
+    assert isinstance(row.age, (int, float, type(None)))
+    return f"patient_id={row.patient_id}, age={row.age}"
 
 def test_string_types():
-    df = spark.table(f"{CATALOG}.{SCHEMA}.customers")
-    row = df.select("customer_name", "customer_tier", "region").first()
-    assert isinstance(row.customer_name, str)
-    return f"name={row.customer_name}, tier={row.customer_tier}"
+    df = spark.table(f"{CATALOG}.{SCHEMA}.patients")
+    row = df.select("patient_name", "risk_tier", "state").first()
+    assert isinstance(row.patient_name, str)
+    return f"name={row.patient_name}, tier={row.risk_tier}"
 
 def test_date_types():
-    df = spark.table(f"{CATALOG}.{SCHEMA}.customers")
-    row = df.select("signup_date").first()
-    assert row.signup_date is not None
-    return f"signup_date={row.signup_date}"
+    df = spark.table(f"{CATALOG}.{SCHEMA}.patients")
+    row = df.select("birth_date").first()
+    assert row.birth_date is not None
+    return f"birth_date={row.birth_date}"
 
 def test_timestamp_types():
-    df = spark.table(f"{CATALOG}.{SCHEMA}.events")
-    row = df.select("event_timestamp").first()
-    assert row.event_timestamp is not None
-    return f"event_timestamp={row.event_timestamp}"
+    df = spark.table(f"{CATALOG}.{SCHEMA}.encounters")
+    row = df.select("encounter_timestamp").first()
+    assert row.encounter_timestamp is not None
+    return f"encounter_timestamp={row.encounter_timestamp}"
 
 def test_variant_types():
-    df = spark.table(f"{CATALOG}.{SCHEMA}.events")
-    row = df.select("event_data").first()
-    return f"event_data type={type(row.event_data).__name__}"
+    df = spark.table(f"{CATALOG}.{SCHEMA}.medications")
+    row = df.select("medication_details").first()
+    return f"medication_details type={type(row.medication_details).__name__}"
 
 run_test("Numeric Types", test_numeric_types, "Data Types", "DBX", "IRC+VENDED+STORAGE")
 run_test("String Types", test_string_types, "Data Types", "DBX", "IRC+VENDED+STORAGE")
@@ -246,47 +255,47 @@ run_test("Variant Types", test_variant_types, "Data Types", "DBX", "IRC+VENDED+S
 
 def test_count_aggregation():
     result = spark.sql(f"""
-        SELECT COUNT(*) as cnt FROM {CATALOG}.{SCHEMA}.customers
+        SELECT COUNT(*) as cnt FROM {CATALOG}.{SCHEMA}.patients
     """).first()
-    assert result.cnt == EXPECTED_COUNTS["customers"]
+    assert result.cnt == EXPECTED_COUNTS["patients"]
     return f"count={result.cnt:,}"
 
 def test_sum_aggregation():
     result = spark.sql(f"""
-        SELECT SUM(lifetime_value) as total FROM {CATALOG}.{SCHEMA}.customers
+        SELECT SUM(claim_amount) as total FROM {CATALOG}.{SCHEMA}.claims
     """).first()
     assert result.total is not None
-    return f"total_lifetime_value={result.total:,.2f}"
+    return f"total_claim_amount={result.total:,.2f}"
 
 def test_avg_aggregation():
     result = spark.sql(f"""
-        SELECT AVG(total_amount) as avg_order FROM {CATALOG}.{SCHEMA}.orders
+        SELECT AVG(claim_amount) as avg_claim FROM {CATALOG}.{SCHEMA}.claims
     """).first()
-    assert result.avg_order is not None
-    return f"avg_order_amount={result.avg_order:.2f}"
+    assert result.avg_claim is not None
+    return f"avg_claim_amount={result.avg_claim:.2f}"
 
 def test_group_by():
     result = spark.sql(f"""
-        SELECT customer_tier, COUNT(*) as cnt 
-        FROM {CATALOG}.{SCHEMA}.customers 
-        GROUP BY customer_tier
+        SELECT risk_tier, COUNT(*) as cnt 
+        FROM {CATALOG}.{SCHEMA}.patients 
+        GROUP BY risk_tier
         ORDER BY cnt DESC
     """).collect()
     assert len(result) > 0
-    return f"{len(result)} tiers"
+    return f"{len(result)} risk tiers"
 
 def test_distinct():
     result = spark.sql(f"""
-        SELECT COUNT(DISTINCT region) as regions FROM {CATALOG}.{SCHEMA}.customers
+        SELECT COUNT(DISTINCT state) as states FROM {CATALOG}.{SCHEMA}.patients
     """).first()
-    assert result.regions > 0
-    return f"{result.regions} distinct regions"
+    assert result.states > 0
+    return f"{result.states} distinct states"
 
 def test_window_function():
     result = spark.sql(f"""
-        SELECT customer_id, total_amount,
-               ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY total_amount DESC) as rn
-        FROM {CATALOG}.{SCHEMA}.orders
+        SELECT patient_id, claim_amount,
+               ROW_NUMBER() OVER (PARTITION BY patient_id ORDER BY claim_amount DESC) as rn
+        FROM {CATALOG}.{SCHEMA}.claims
         LIMIT 10
     """).collect()
     assert len(result) > 0
@@ -317,9 +326,9 @@ run_test("Window Function", test_window_function, "Aggregations", "DBX", "IRC+VE
 
 def test_inner_join():
     result = spark.sql(f"""
-        SELECT c.customer_id, c.customer_name, o.order_id, o.total_amount
-        FROM {CATALOG}.{SCHEMA}.customers c
-        INNER JOIN {CATALOG}.{SCHEMA}.orders o ON c.customer_id = o.customer_id
+        SELECT p.patient_id, p.patient_name, c.claim_id, c.claim_amount
+        FROM {CATALOG}.{SCHEMA}.patients p
+        INNER JOIN {CATALOG}.{SCHEMA}.claims c ON p.patient_id = c.patient_id
         LIMIT 100
     """).collect()
     assert len(result) > 0
@@ -327,41 +336,41 @@ def test_inner_join():
 
 def test_left_join():
     result = spark.sql(f"""
-        SELECT c.customer_id, COUNT(o.order_id) as order_count
-        FROM {CATALOG}.{SCHEMA}.customers c
-        LEFT JOIN {CATALOG}.{SCHEMA}.orders o ON c.customer_id = o.customer_id
-        GROUP BY c.customer_id
+        SELECT p.patient_id, COUNT(c.claim_id) as claim_count
+        FROM {CATALOG}.{SCHEMA}.patients p
+        LEFT JOIN {CATALOG}.{SCHEMA}.claims c ON p.patient_id = c.patient_id
+        GROUP BY p.patient_id
         LIMIT 100
     """).collect()
     assert len(result) > 0
-    return f"{len(result)} customers with order counts"
+    return f"{len(result)} patients with claim counts"
 
 def test_multi_table_join():
     result = spark.sql(f"""
         SELECT 
-            c.customer_name,
-            COUNT(DISTINCT o.order_id) as orders,
-            COUNT(DISTINCT t.transaction_id) as transactions
-        FROM {CATALOG}.{SCHEMA}.customers c
-        LEFT JOIN {CATALOG}.{SCHEMA}.orders o ON c.customer_id = o.customer_id
-        LEFT JOIN {CATALOG}.{SCHEMA}.transactions t ON c.customer_id = t.customer_id
-        GROUP BY c.customer_name
+            p.patient_name,
+            COUNT(DISTINCT c.claim_id) as claims,
+            COUNT(DISTINCT e.encounter_id) as encounters
+        FROM {CATALOG}.{SCHEMA}.patients p
+        LEFT JOIN {CATALOG}.{SCHEMA}.claims c ON p.patient_id = c.patient_id
+        LEFT JOIN {CATALOG}.{SCHEMA}.encounters e ON p.patient_id = e.patient_id
+        GROUP BY p.patient_name
         LIMIT 50
     """).collect()
     assert len(result) > 0
-    return f"{len(result)} customers with orders & transactions"
+    return f"{len(result)} patients with claims & encounters"
 
 def test_self_join():
     result = spark.sql(f"""
-        SELECT e1.event_id, e1.customer_id, e2.event_id as next_event
-        FROM {CATALOG}.{SCHEMA}.events e1
-        INNER JOIN {CATALOG}.{SCHEMA}.events e2 
-            ON e1.customer_id = e2.customer_id 
-            AND e1.event_id < e2.event_id
+        SELECT e1.encounter_id, e1.patient_id, e2.encounter_id as next_encounter
+        FROM {CATALOG}.{SCHEMA}.encounters e1
+        INNER JOIN {CATALOG}.{SCHEMA}.encounters e2 
+            ON e1.patient_id = e2.patient_id 
+            AND e1.encounter_id < e2.encounter_id
         LIMIT 50
     """).collect()
     assert len(result) > 0
-    return f"{len(result)} event pairs"
+    return f"{len(result)} encounter pairs"
 
 run_test("Inner Join", test_inner_join, "Joins", "DBX", "IRC+VENDED+STORAGE")
 run_test("Left Join", test_left_join, "Joins", "DBX", "IRC+VENDED+STORAGE")
@@ -382,9 +391,9 @@ run_test("Self Join", test_self_join, "Joins", "DBX", "IRC+VENDED+STORAGE")
 
 # COMMAND ----------
 
-def test_full_scan_events():
+def test_full_scan_encounters():
     start = time.time()
-    count = spark.table(f"{CATALOG}.{SCHEMA}.events").count()
+    count = spark.table(f"{CATALOG}.{SCHEMA}.encounters").count()
     elapsed = time.time() - start
     throughput = count / elapsed
     return f"{count:,} rows in {elapsed:.2f}s ({throughput:,.0f} rows/sec)"
@@ -392,8 +401,8 @@ def test_full_scan_events():
 def test_filtered_scan():
     start = time.time()
     count = spark.sql(f"""
-        SELECT COUNT(*) FROM {CATALOG}.{SCHEMA}.events 
-        WHERE event_type = 'purchase'
+        SELECT COUNT(*) FROM {CATALOG}.{SCHEMA}.encounters 
+        WHERE encounter_type = 'emergency'
     """).first()[0]
     elapsed = time.time() - start
     return f"{count:,} filtered rows in {elapsed:.2f}s"
@@ -401,9 +410,9 @@ def test_filtered_scan():
 def test_aggregation_performance():
     start = time.time()
     result = spark.sql(f"""
-        SELECT region, event_type, COUNT(*) as cnt, SUM(amount) as total
-        FROM {CATALOG}.{SCHEMA}.events
-        GROUP BY region, event_type
+        SELECT state, encounter_type, COUNT(*) as cnt, SUM(cost) as total
+        FROM {CATALOG}.{SCHEMA}.encounters
+        GROUP BY state, encounter_type
     """).collect()
     elapsed = time.time() - start
     return f"{len(result)} groups in {elapsed:.2f}s"
@@ -412,13 +421,13 @@ def test_join_performance():
     start = time.time()
     count = spark.sql(f"""
         SELECT COUNT(*)
-        FROM {CATALOG}.{SCHEMA}.orders o
-        INNER JOIN {CATALOG}.{SCHEMA}.customers c ON o.customer_id = c.customer_id
+        FROM {CATALOG}.{SCHEMA}.claims c
+        INNER JOIN {CATALOG}.{SCHEMA}.patients p ON c.patient_id = p.patient_id
     """).first()[0]
     elapsed = time.time() - start
     return f"{count:,} joined rows in {elapsed:.2f}s"
 
-run_test("Full Scan (1M Events)", test_full_scan_events, "Performance", "DBX", "IRC+VENDED+STORAGE")
+run_test("Full Scan (1M Encounters)", test_full_scan_encounters, "Performance", "DBX", "IRC+VENDED+STORAGE")
 run_test("Filtered Scan", test_filtered_scan, "Performance", "DBX", "IRC+VENDED+STORAGE")
 run_test("Aggregation Performance", test_aggregation_performance, "Performance", "DBX", "IRC+VENDED+STORAGE")
 run_test("Join Performance", test_join_performance, "Performance", "DBX", "IRC+VENDED+STORAGE")
@@ -440,8 +449,8 @@ run_test("Join Performance", test_join_performance, "Performance", "DBX", "IRC+V
 
 def test_limit_offset():
     result = spark.sql(f"""
-        SELECT * FROM {CATALOG}.{SCHEMA}.customers 
-        ORDER BY customer_id
+        SELECT * FROM {CATALOG}.{SCHEMA}.patients 
+        ORDER BY patient_id
         LIMIT 10
     """).collect()
     assert len(result) == 10
@@ -449,54 +458,54 @@ def test_limit_offset():
 
 def test_order_by():
     result = spark.sql(f"""
-        SELECT customer_id, lifetime_value 
-        FROM {CATALOG}.{SCHEMA}.customers 
-        ORDER BY lifetime_value DESC
+        SELECT patient_id, age 
+        FROM {CATALOG}.{SCHEMA}.patients 
+        ORDER BY age DESC
         LIMIT 5
     """).collect()
-    values = [r.lifetime_value for r in result]
+    values = [r.age for r in result if r.age is not None]
     assert values == sorted(values, reverse=True)
     return "ORDER BY DESC works"
 
 def test_case_when():
     result = spark.sql(f"""
-        SELECT customer_id,
+        SELECT patient_id,
                CASE 
-                   WHEN lifetime_value > 1000 THEN 'High'
-                   WHEN lifetime_value > 500 THEN 'Medium'
-                   ELSE 'Low'
-               END as value_tier
-        FROM {CATALOG}.{SCHEMA}.customers
+                   WHEN age > 65 THEN 'Senior'
+                   WHEN age > 40 THEN 'Adult'
+                   ELSE 'Young'
+               END as age_group
+        FROM {CATALOG}.{SCHEMA}.patients
         LIMIT 10
     """).collect()
-    assert all(r.value_tier in ['High', 'Medium', 'Low'] for r in result)
+    assert all(r.age_group in ['Senior', 'Adult', 'Young'] for r in result)
     return "CASE WHEN works"
 
 def test_subquery():
     result = spark.sql(f"""
-        SELECT * FROM {CATALOG}.{SCHEMA}.customers
-        WHERE customer_id IN (
-            SELECT DISTINCT customer_id FROM {CATALOG}.{SCHEMA}.orders
-            WHERE total_amount > 100
+        SELECT * FROM {CATALOG}.{SCHEMA}.patients
+        WHERE patient_id IN (
+            SELECT DISTINCT patient_id FROM {CATALOG}.{SCHEMA}.claims
+            WHERE claim_amount > 1000
         )
         LIMIT 10
     """).collect()
-    return f"{len(result)} customers from subquery"
+    return f"{len(result)} patients from subquery"
 
 def test_cte():
     result = spark.sql(f"""
-        WITH top_customers AS (
-            SELECT customer_id, SUM(total_amount) as total_spend
-            FROM {CATALOG}.{SCHEMA}.orders
-            GROUP BY customer_id
-            ORDER BY total_spend DESC
+        WITH high_cost_patients AS (
+            SELECT patient_id, SUM(claim_amount) as total_claims
+            FROM {CATALOG}.{SCHEMA}.claims
+            GROUP BY patient_id
+            ORDER BY total_claims DESC
             LIMIT 10
         )
-        SELECT c.customer_name, tc.total_spend
-        FROM top_customers tc
-        JOIN {CATALOG}.{SCHEMA}.customers c ON tc.customer_id = c.customer_id
+        SELECT p.patient_name, hcp.total_claims
+        FROM high_cost_patients hcp
+        JOIN {CATALOG}.{SCHEMA}.patients p ON hcp.patient_id = p.patient_id
     """).collect()
-    return f"{len(result)} top customers via CTE"
+    return f"{len(result)} high cost patients via CTE"
 
 run_test("LIMIT", test_limit_offset, "SQL Compatibility", "DBX", "IRC+VENDED+STORAGE")
 run_test("ORDER BY", test_order_by, "SQL Compatibility", "DBX", "IRC+VENDED+STORAGE")
@@ -712,7 +721,7 @@ print("""
 └────────────────────┴──────────────────────────────────────────────────────────────────────┘
 """)
 
-for table in ["customers", "orders", "events"]:
+for table in ["patients", "claims", "encounters"]:
     full_name = f"{CATALOG}.{SCHEMA}.{table}"
     result = verify_no_double_compute(full_name)
     

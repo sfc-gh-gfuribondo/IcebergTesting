@@ -7,6 +7,15 @@
 # MAGIC **Foreign Catalog:** `snowflake_iceberg`  
 # MAGIC **Snowflake Database:** `ICEBERG_POC`  
 # MAGIC **Connection:** `snowflake_iceberg_conn` (PAT auth)
+# MAGIC 
+# MAGIC ## Healthcare Domain Tables
+# MAGIC | Table | Description | Expected Rows |
+# MAGIC |-------|-------------|---------------|
+# MAGIC | patients | Patient demographics | 100,000 |
+# MAGIC | encounters | Clinical encounters | 1,000,000 |
+# MAGIC | claims | Insurance claims | 500,000 |
+# MAGIC | medications | Medication records | 300,000 |
+# MAGIC | providers | Healthcare providers | 1,000 |
 
 # COMMAND ----------
 
@@ -31,32 +40,32 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 3. Query CUSTOMERS Table
+# MAGIC ## 3. Query PATIENTS Table
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC SELECT * FROM snowflake_iceberg.external_iceberg.customers LIMIT 10;
+# MAGIC SELECT * FROM snowflake_iceberg.external_iceberg.patients LIMIT 10;
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 4. Query ORDERS Table
+# MAGIC ## 4. Query CLAIMS Table
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC SELECT * FROM snowflake_iceberg.external_iceberg.orders LIMIT 10;
+# MAGIC SELECT * FROM snowflake_iceberg.external_iceberg.claims LIMIT 10;
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 5. Query EVENTS Table
+# MAGIC ## 5. Query ENCOUNTERS Table
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC SELECT * FROM snowflake_iceberg.external_iceberg.events LIMIT 10;
+# MAGIC SELECT * FROM snowflake_iceberg.external_iceberg.encounters LIMIT 10;
 
 # COMMAND ----------
 
@@ -67,25 +76,25 @@
 
 # MAGIC %sql
 # MAGIC SELECT 
-# MAGIC     COUNT(*) as total_customers
-# MAGIC FROM snowflake_iceberg.external_iceberg.customers;
+# MAGIC     COUNT(*) as total_patients
+# MAGIC FROM snowflake_iceberg.external_iceberg.patients;
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 7. Join Query (Customers + Orders)
+# MAGIC ## 7. Join Query (Patients + Claims)
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC SELECT 
-# MAGIC     c.customer_id,
-# MAGIC     COUNT(o.order_id) as order_count
-# MAGIC FROM snowflake_iceberg.external_iceberg.customers c
-# MAGIC LEFT JOIN snowflake_iceberg.external_iceberg.orders o
-# MAGIC     ON c.customer_id = o.customer_id
-# MAGIC GROUP BY c.customer_id
-# MAGIC ORDER BY order_count DESC
+# MAGIC     p.patient_id,
+# MAGIC     COUNT(c.claim_id) as claim_count
+# MAGIC FROM snowflake_iceberg.external_iceberg.patients p
+# MAGIC LEFT JOIN snowflake_iceberg.external_iceberg.claims c
+# MAGIC     ON p.patient_id = c.patient_id
+# MAGIC GROUP BY p.patient_id
+# MAGIC ORDER BY claim_count DESC
 # MAGIC LIMIT 10;
 
 # COMMAND ----------
@@ -95,14 +104,14 @@
 
 # COMMAND ----------
 
-df_customers = spark.table("snowflake_iceberg.external_iceberg.customers")
-print(f"Customers row count: {df_customers.count():,}")
-df_customers.printSchema()
+df_patients = spark.table("snowflake_iceberg.external_iceberg.patients")
+print(f"Patients row count: {df_patients.count():,}")
+df_patients.printSchema()
 
 # COMMAND ----------
 
-df_orders = spark.table("snowflake_iceberg.external_iceberg.orders")
-print(f"Orders row count: {df_orders.count():,}")
+df_claims = spark.table("snowflake_iceberg.external_iceberg.claims")
+print(f"Claims row count: {df_claims.count():,}")
 
 # COMMAND ----------
 
@@ -125,14 +134,14 @@ print(f"Orders row count: {df_orders.count():,}")
 
 # COMMAND ----------
 
-df_customers = spark.table("snowflake_iceberg.external_iceberg.customers")
+df_patients = spark.table("snowflake_iceberg.external_iceberg.patients")
 print("=== PHYSICAL PLAN ===")
-df_customers.explain(mode="simple")
+df_patients.explain(mode="simple")
 
 # COMMAND ----------
 
 print("=== EXTENDED PLAN (for detailed analysis) ===")
-df_customers.explain(mode="extended")
+df_patients.explain(mode="extended")
 
 # COMMAND ----------
 
@@ -142,7 +151,7 @@ df_customers.explain(mode="extended")
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC DESCRIBE EXTENDED snowflake_iceberg.external_iceberg.customers;
+# MAGIC DESCRIBE EXTENDED snowflake_iceberg.external_iceberg.patients;
 
 # COMMAND ----------
 
@@ -152,7 +161,7 @@ df_customers.explain(mode="extended")
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC SHOW TBLPROPERTIES snowflake_iceberg.external_iceberg.customers;
+# MAGIC SHOW TBLPROPERTIES snowflake_iceberg.external_iceberg.patients;
 
 # COMMAND ----------
 
@@ -212,7 +221,7 @@ def check_double_compute(table_name):
         "plan_snippet": plan[:500] if plan else "No plan available"
     }
 
-tables_to_check = ["customers", "orders", "events"]
+tables_to_check = ["patients", "claims", "encounters"]
 print("=" * 80)
 print("DOUBLE COMPUTE VERIFICATION RESULTS")
 print("=" * 80)
@@ -321,7 +330,7 @@ Access Delegation Modes:
 """)
 print("=" * 80)
 
-for table in ["customers", "orders", "events"]:
+for table in ["patients", "claims", "encounters"]:
     full_name = f"snowflake_iceberg.external_iceberg.{table}"
     try:
         cred_result = check_credential_type(full_name)
@@ -371,7 +380,7 @@ print("\n" + "=" * 80)
 
 results = []
 
-tables = ["customers", "events", "orders", "products", "transactions"]
+tables = ["patients", "encounters", "claims", "medications", "providers"]
 for table in tables:
     try:
         count = spark.table(f"snowflake_iceberg.external_iceberg.{table}").count()
@@ -383,7 +392,7 @@ print("=" * 60)
 print("FOREIGN CATALOG TEST RESULTS")
 print("=" * 60)
 for table, count, status in results:
-    print(f"  {table:15} | {count:>8,} rows | {status}")
+    print(f"  {table:15} | {count:>10,} rows | {status}")
 print("=" * 60)
 
 # COMMAND ----------
